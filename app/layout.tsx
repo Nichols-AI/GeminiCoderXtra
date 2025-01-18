@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import BodyWrapper from "@/components/BodyWrapper";
 
-let title = "Gemini Coder – AI Code Generator";
-let description = "Generate your next app with Gemini";
-let url = "https://llamacoder.io/";
-let ogimage = "https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg";
-let sitename = "geminicoder.io";
+let title = "GeminiCoderXtra – Multi-Model AI Code Generator";
+let description = "Generate your next app with multiple AI models";
+let url = "https://github.com/Nichols-AI/GeminiCoderXtra";
+let ogimage = "/logo.svg";
+let sitename = "geminicoderxtra.io";
 
 export const metadata: Metadata = {
   metadataBase: new URL(url),
   title,
   description,
   icons: {
-    icon: "/favicon.ico",
+    icon: "/app/favicon.ico",
   },
   openGraph: {
     images: [ogimage],
@@ -39,9 +40,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full">
-      <ThemeProvider>
-        {children}
-      </ThemeProvider>
+      <body suppressHydrationWarning>
+        <ThemeProvider>
+          <BodyWrapper>
+            {children}
+          </BodyWrapper>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

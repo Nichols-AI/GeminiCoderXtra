@@ -1,9 +1,6 @@
 import dedent from "dedent";
 import { z } from "zod";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const apiKey = process.env.GOOGLE_AI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
+import { ProviderFactory } from "./providers/factory";
 
 export async function POST(req: Request) {
   let json = await req.json();
@@ -23,47 +20,103 @@ export async function POST(req: Request) {
     return new Response(result.error.message, { status: 422 });
   }
 
-  let { model, messages } = result.data;
-  let systemPrompt = getSystemPrompt();
+  try {
+    let { model, messages } = result.data;
+    let systemPrompt = getSystemPrompt();
+    
+    // Get the appropriate provider for the requested model
+    const provider = ProviderFactory.getProvider(model);
+    
+    // Generate the stream using the provider
+    // Ensure proper code formatting
+    const formattingInstructions = "\nPlease ONLY return code, NO backticks or language names. Don't start with \`\`\`typescript or \`\`\`javascript or \`\`\`tsx or \`\`\`. ALWAYS start with proper import statements using the 'import' keyword.";
+    
+    const stream = await provider.generateStream(
+      messages[0].content + systemPrompt + formattingInstructions,
+      { model }
+    );
 
-  const geminiModel = genAI.getGenerativeModel({model: model});
-
-  const geminiStream = await geminiModel.generateContentStream(
-    messages[0].content + systemPrompt + "\nPlease ONLY return code, NO backticks or language names. Don't start with \`\`\`typescript or \`\`\`javascript or \`\`\`tsx or \`\`\`."
-  );
-
-  console.log(messages[0].content + systemPrompt + "\nPlease ONLY return code, NO backticks or language names. Don't start with \`\`\`typescript or \`\`\`javascript or \`\`\`tsx or \`\`\`.")
-
-  const readableStream = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of geminiStream.stream) {
-        const chunkText = chunk.text();
-        controller.enqueue(new TextEncoder().encode(chunkText));
+    return new Response(stream);
+  } catch (error) {
+    console.error("Error generating code:", error);
+    let errorMessage = "An unknown error occurred";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      // Add more context if it's an API error
+      if (errorMessage.includes("API")) {
+        errorMessage = `API Error: ${errorMessage}. Please try again.`;
       }
-      controller.close();
-    },
-  });
-
-  return new Response(readableStream);
+    }
+    return new Response(errorMessage, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+  }
 }
 
 function getSystemPrompt() {
   let systemPrompt = 
-`You are an expert frontend React engineer who is also a great UI/UX designer. Follow the instructions carefully, I will tip you $1 million if you do a good job:
+`You are an expert frontend React engineer who is also a great UI/UX designer. Follow these instructions EXACTLY:
 
-- Think carefully step by step.
-- Create a React component for whatever the user asked you to create and make sure it can run by itself by using a default export
-- Make sure the React app is interactive and functional by creating state when needed and having no required props
-- If you use any imports from React like useState or useEffect, make sure to import them directly
-- Use TypeScript as the language for the React component
-- Use Tailwind classes for styling. DO NOT USE ARBITRARY VALUES (e.g. \`h-[600px]\`). Make sure to use a consistent color palette.
-- Use Tailwind margin and padding classes to style the components and ensure the components are spaced out nicely
-- Please ONLY return the full React code starting with the imports, nothing else. It's very important for my job that you only return the React code with imports. DO NOT START WITH \`\`\`typescript or \`\`\`javascript or \`\`\`tsx or \`\`\`.
-- ONLY IF the user asks for a dashboard, graph or chart, the recharts library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`. Please only use this when needed.
-- For placeholder images, please use a <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />
+1. Start EVERY file with proper imports, EXACTLY like this:
+   import React, { useState, useEffect } from 'react';
+   
+   Example of a complete, valid component:
+   import React, { useState } from 'react';
+   
+   interface Props {}
+   
+   const MyComponent: React.FC<Props> = () => {
+     const [value, setValue] = useState<string>('');
+     return <div>{value}</div>;
+   };
+   
+   export default MyComponent;
+
+2. Follow TypeScript best practices:
+   - Use proper type annotations
+   - Define interfaces/types for props and state
+   - Use React.FC for functional components
+   - Export components as default
+
+3. Component requirements:
+   - Make components interactive using React hooks (useState, useEffect)
+   - No required props (components should work standalone)
+   - Use descriptive variable names
+   - Add proper TypeScript types for all variables and functions
+
+4. Styling:
+   - Use Tailwind CSS classes only
+   - NO arbitrary values (e.g. NO h-[600px])
+   - Use consistent color palette
+   - Use proper margin/padding classes for spacing
+
+5. Code format:
+   - Return ONLY the complete React code
+   - Start with imports
+   - NO markdown code blocks (NO \`\`\`typescript or similar)
+   - Include semicolons at the end of statements
+   - Proper indentation and spacing
+
+6. Special cases:
+   - For charts/graphs: import from recharts (e.g. import { LineChart } from 'recharts')
+   - For images: use <div className="bg-gray-200 border-2 border-dashed rounded-xl w-16 h-16" />
+
+Double-check your code before returning to ensure:
+- All imports are properly formatted with 'import' keyword
+- All statements end with semicolons
+- All types are properly defined
+- No syntax errors
   `;
 
   systemPrompt += `
+    Available libraries:
+    - uuid (for generating unique IDs, import { v4 as uuidv4 } from 'uuid')
+    - recharts (for charts/graphs)
+    - All Radix UI components
+    
     NO OTHER LIBRARIES (e.g. zod, hookform) ARE INSTALLED OR ABLE TO BE IMPORTED.
   `;
 
@@ -71,3 +124,13 @@ function getSystemPrompt() {
 }
 
 export const runtime = "edge";
+export const maxDuration = 300; // 5 minutes timeout
+
+// Explicitly declare which env vars are used
+export const envVars = [
+  'ANTHROPIC_API_KEY',
+  'GOOGLE_AI_API_KEY',
+  'DEEPSEEK_API_KEY',
+  'GROK_API_KEY',
+  'OPENAI_API_KEY'
+];

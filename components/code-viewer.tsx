@@ -1,14 +1,42 @@
 "use client";
 
-import * as shadcnComponents from "@/utils/shadcn";
-import { Sandpack } from "@codesandbox/sandpack-react";
+import shadcnDocs from "@/utils/shadcn-docs";
 import {
+  Sandpack,
   SandpackPreview,
   SandpackProvider,
-} from "@codesandbox/sandpack-react/unstyled";
+} from "@codesandbox/sandpack-react";
 import { dracula as draculaTheme } from "@codesandbox/sandpack-themes";
 import dedent from "dedent";
 import "./code-viewer.css";
+
+function preprocessCode(code: string): string {
+  // Remove any markdown code block syntax if present
+  code = code.replace(/```[a-z]*\n?|\n```/g, '');
+  
+  // Clean up the code
+  let lines = code.split('\n');
+  
+  // Remove any malformed React imports or partial imports
+  lines = lines.filter(line => {
+    const isPartialImport = line.trim().startsWith('React,') || 
+                           line.trim().startsWith(',') ||
+                           line.trim().startsWith('{ useState }');
+    return !isPartialImport;
+  });
+  
+  // Find any valid React import
+  const hasValidImport = lines.some(line => 
+    line.includes('import React') && line.includes('from') && line.includes('react')
+  );
+  
+  // If no valid import found, add one
+  if (!hasValidImport) {
+    lines.unshift('import React, { useState } from "react";');
+  }
+  
+  return lines.join('\n');
+}
 
 export default function CodeViewer({
   code,
@@ -17,6 +45,7 @@ export default function CodeViewer({
   code: string;
   showEditor?: boolean;
 }) {
+  const processedCode = preprocessCode(code);
   return showEditor ? (
     <Sandpack
       options={{
@@ -26,7 +55,7 @@ export default function CodeViewer({
         ...sharedOptions,
       }}
       files={{
-        "App.tsx": code,
+        "App.tsx": processedCode,
         ...sharedFiles,
       }}
       {...sharedProps}
@@ -34,7 +63,7 @@ export default function CodeViewer({
   ) : (
     <SandpackProvider
       files={{
-        "App.tsx": code,
+        "App.tsx": processedCode,
         ...sharedFiles,
       }}
       className="flex h-full w-full grow flex-col justify-center"
@@ -58,6 +87,7 @@ let sharedProps = {
       "lucide-react": "latest",
       recharts: "2.9.0",
       "react-router-dom": "latest",
+      uuid: "^9.0.0",
       "@radix-ui/react-accordion": "^1.2.0",
       "@radix-ui/react-alert-dialog": "^1.1.1",
       "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -99,47 +129,43 @@ let sharedOptions = {
   externalResources: [
     "https://unpkg.com/@tailwindcss/ui/dist/tailwind-ui.min.css",
   ],
+  recompileMode: "immediate" as const,
+  recompileDelay: 300,
 };
 
 let sharedFiles = {
-  "/lib/utils.ts": shadcnComponents.utils,
-  "/components/ui/accordion.tsx": shadcnComponents.accordian,
-  "/components/ui/alert-dialog.tsx": shadcnComponents.alertDialog,
-  "/components/ui/alert.tsx": shadcnComponents.alert,
-  "/components/ui/avatar.tsx": shadcnComponents.avatar,
-  "/components/ui/badge.tsx": shadcnComponents.badge,
-  "/components/ui/breadcrumb.tsx": shadcnComponents.breadcrumb,
-  "/components/ui/button.tsx": shadcnComponents.button,
-  "/components/ui/calendar.tsx": shadcnComponents.calendar,
-  "/components/ui/card.tsx": shadcnComponents.card,
-  "/components/ui/carousel.tsx": shadcnComponents.carousel,
-  "/components/ui/checkbox.tsx": shadcnComponents.checkbox,
-  "/components/ui/collapsible.tsx": shadcnComponents.collapsible,
-  "/components/ui/dialog.tsx": shadcnComponents.dialog,
-  "/components/ui/drawer.tsx": shadcnComponents.drawer,
-  "/components/ui/dropdown-menu.tsx": shadcnComponents.dropdownMenu,
-  "/components/ui/input.tsx": shadcnComponents.input,
-  "/components/ui/label.tsx": shadcnComponents.label,
-  "/components/ui/menubar.tsx": shadcnComponents.menuBar,
-  "/components/ui/navigation-menu.tsx": shadcnComponents.navigationMenu,
-  "/components/ui/pagination.tsx": shadcnComponents.pagination,
-  "/components/ui/popover.tsx": shadcnComponents.popover,
-  "/components/ui/progress.tsx": shadcnComponents.progress,
-  "/components/ui/radio-group.tsx": shadcnComponents.radioGroup,
-  "/components/ui/select.tsx": shadcnComponents.select,
-  "/components/ui/separator.tsx": shadcnComponents.separator,
-  "/components/ui/skeleton.tsx": shadcnComponents.skeleton,
-  "/components/ui/slider.tsx": shadcnComponents.slider,
-  "/components/ui/switch.tsx": shadcnComponents.switchComponent,
-  "/components/ui/table.tsx": shadcnComponents.table,
-  "/components/ui/tabs.tsx": shadcnComponents.tabs,
-  "/components/ui/textarea.tsx": shadcnComponents.textarea,
-  "/components/ui/toast.tsx": shadcnComponents.toast,
-  "/components/ui/toaster.tsx": shadcnComponents.toaster,
-  "/components/ui/toggle-group.tsx": shadcnComponents.toggleGroup,
-  "/components/ui/toggle.tsx": shadcnComponents.toggle,
-  "/components/ui/tooltip.tsx": shadcnComponents.tooltip,
-  "/components/ui/use-toast.tsx": shadcnComponents.useToast,
+  "/components/ui/avatar.tsx": {
+    code: shadcnDocs[0],
+    hidden: true
+  },
+  "/components/ui/button.tsx": {
+    code: shadcnDocs[1],
+    hidden: true
+  },
+  "/components/ui/card.tsx": {
+    code: shadcnDocs[2],
+    hidden: true
+  },
+  "/components/ui/input.tsx": {
+    code: shadcnDocs[3],
+    hidden: true
+  },
+  "/components/ui/label.tsx": {
+    code: shadcnDocs[4],
+    hidden: true
+  },
+  "/components/ui/radio-group.tsx": {
+    code: shadcnDocs[5],
+    hidden: true
+  },
+  "/components/ui/select.tsx": {
+    code: shadcnDocs[6],
+    hidden: true
+  },
+  "/components/ui/textarea.tsx": {
+    code: shadcnDocs[7],
+    hidden: true
+  },
   "/public/index.html": dedent`
     <!DOCTYPE html>
     <html lang="en">

@@ -2,13 +2,12 @@
 
 import CodeViewer from "@/components/code-viewer";
 import { useScrollTo } from "@/hooks/use-scroll-to";
-import { CheckIcon } from "@heroicons/react/16/solid";
-import { ArrowLongRightIcon, ChevronDownIcon } from "@heroicons/react/20/solid";
+import { CheckIcon, ArrowLongRightIcon, ChevronDownIcon } from "@heroicons/react/24/solid";
 import { ArrowUpOnSquareIcon } from "@heroicons/react/24/outline";
 import * as Select from "@radix-ui/react-select";
 import * as Switch from "@radix-ui/react-switch";
 import { AnimatePresence, motion } from "framer-motion";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useRef } from "react";
 import LoadingDots from "../../components/loading-dots";
 
 function removeCodeFormatting(code: string): string {
@@ -19,19 +18,39 @@ export default function Home() {
   let [status, setStatus] = useState<
     "initial" | "creating" | "created" | "updating" | "updated"
   >("initial");
-  let [prompt, setPrompt] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
   let models = [
     {
-      label: "gemini-2.0-flash-exp",
-      value: "gemini-2.0-flash-exp",
+      label: "Claude 3 Opus",
+      value: "claude-3-opus-20240229",
     },
     {
-      label: "gemini-1.5-pro",
-      value: "gemini-1.5-pro",
+      label: "GPT-4 Turbo",
+      value: "gpt-4-turbo-preview",
     },
     {
-      label: "gemini-1.5-flash",
-      value: "gemini-1.5-flash",
+      label: "Claude 3 Sonnet",
+      value: "claude-3-sonnet-20240229",
+    },
+    {
+      label: "DeepSeek Chat",
+      value: "deepseek-chat",
+    },
+    {
+      label: "GPT-4",
+      value: "gpt-4",
+    },
+    {
+      label: "Gemini Pro",
+      value: "gemini-pro",
+    },
+    {
+      label: "GPT-3.5 Turbo",
+      value: "gpt-3.5-turbo",
+    },
+    {
+      label: "Grok-1",
+      value: "grok-1",
     }
   ];
   let [model, setModel] = useState(models[0].value);
@@ -49,49 +68,64 @@ export default function Home() {
 
   async function createApp(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const promptValue = formData.get('prompt') as string;
+    console.log("Form submitted with prompt:", promptValue);
 
-    if (status !== "initial") {
-      scrollTo({ delay: 0.5 });
+    if (!promptValue?.trim()) {
+      console.error("Prompt is empty");
+      return;
     }
 
-    setStatus("creating");
-    setGeneratedCode("");
-
-    let res = await fetch("/api/generateCode", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(res.statusText);
-    }
-
-    if (!res.body) {
-      throw new Error("No response body");
-    }
-
-    const reader = res.body.getReader();
-    let receivedData = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
+    try {
+      if (status !== "initial") {
+        scrollTo({ delay: 0.5 });
       }
-      receivedData += new TextDecoder().decode(value);
-      const cleanedData = removeCodeFormatting(receivedData);
-      setGeneratedCode(cleanedData);
-    }
 
-    setMessages([{ role: "user", content: prompt }]);
-    setInitialAppConfig({ model });
-    setStatus("created");
+      setStatus("creating");
+      setGeneratedCode("");
+
+      let res = await fetch("/api/generateCode", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: promptValue }],
+        }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`API error: ${res.status} - ${errorText}`);
+      }
+
+      if (!res.body) {
+        throw new Error("No response body");
+      }
+
+      const reader = res.body.getReader();
+      let receivedData = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        receivedData += new TextDecoder().decode(value);
+        const cleanedData = removeCodeFormatting(receivedData);
+        setGeneratedCode(cleanedData);
+      }
+
+      setMessages([{ role: "user", content: promptValue }]);
+      setInitialAppConfig({ model });
+      setStatus("created");
+    } catch (error) {
+      console.error("Error generating code:", error);
+      setStatus("initial");
+      // You might want to show an error message to the user here
+    }
   }
 
   useEffect(() => {
@@ -104,15 +138,11 @@ export default function Home() {
 
   return (
     <main className="mt-12 flex w-full flex-1 flex-col items-center px-4 text-center sm:mt-1">
-      <a
-        className="mb-4 inline-flex h-7 shrink-0 items-center gap-[9px] rounded-[50px] border-[0.5px] border-solid border-[#E6E6E6] bg-[rgba(234,238,255,0.65)] dark:bg-[rgba(30,41,59,0.5)] dark:border-gray-700 px-7 py-5 shadow-[0px_1px_1px_0px_rgba(0,0,0,0.25)]"
-        href="https://ai.google.dev/gemini-api/docs"
-        target="_blank"
-      >
+      <div className="mb-4 inline-flex h-7 shrink-0 items-center gap-[9px] rounded-[50px] border-[0.5px] border-solid border-[#E6E6E6] bg-[rgba(234,238,255,0.65)] dark:bg-[rgba(30,41,59,0.5)] dark:border-gray-700 px-7 py-5 shadow-[0px_1px_1px_0px_rgba(0,0,0,0.25)]">
         <span className="text-center">
-          Powered by <span className="font-medium">Gemini API</span>
+          Powered by <span className="font-medium">Multiple AI Models</span>
         </span>
-      </a>
+      </div>
       <h1 className="my-6 max-w-3xl text-4xl font-bold text-gray-800 dark:text-white sm:text-6xl">
         Turn your <span className="text-blue-600">idea</span>
         <br /> into an <span className="text-blue-600">app</span>
@@ -127,9 +157,8 @@ export default function Home() {
                 <textarea
                   rows={3}
                   required
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
                   name="prompt"
+                  defaultValue=""
                   className="w-full resize-none rounded-l-3xl bg-transparent px-6 py-5 text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-gray-100 dark:placeholder-gray-400"
                   placeholder="Build me a calculator app..."
                 />

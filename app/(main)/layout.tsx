@@ -10,7 +10,7 @@ export default function Layout({
   children: React.ReactNode;
 }>) {
   return (
-    <body className="bg-brand dark:bg-dark antialiased dark:text-gray-100">
+    <div className="bg-brand dark:bg-dark antialiased dark:text-gray-100">
       <div className="absolute inset-0 dark:bg-dark-radial" />
       <div className="absolute inset-x-0 flex justify-center">
         <Image
@@ -31,6 +31,6 @@ export default function Layout({
           <Footer />
         </div>
       </div>
-    </body>
+    </div>
   );
 }
