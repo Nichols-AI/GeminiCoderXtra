@@ -1,7 +1,15 @@
 <div align="center">
   <h1>🚀 GeminiCoderXtra</h1>
   <p>A powerful AI-powered code generation system for React components</p>
+  
+  <img src="public/screenshots/home-hero.png" alt="GeminiCoderXtra Hero" width="800"/>
 </div>
+
+## ✨ Example Generation
+
+Here's an example of generating a calculator component:
+
+<img src="public/screenshots/calculator-example.png" alt="Calculator Example" width="800"/>
 
 <div align="center">
   <a href="#-features">Features</a> •
